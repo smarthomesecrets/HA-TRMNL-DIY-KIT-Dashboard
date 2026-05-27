@@ -1,0 +1,747 @@
+# Master Closet Dashboard — ESPHome v5
+# Changes: °C added beside large temperature number,
+#          YOUR_PERSONAL_CALENDAR added to person1 section,
+#          correct button entity ID in HA automation
+
+substitutions:
+  device_name: YOUR_DEVICE_NAME
+  friendly_name: Master Closet Dashboard
+
+esphome:
+  name: ${device_name}
+  friendly_name: ${friendly_name}
+
+esp32:
+  board: seeed_xiao_esp32s3
+  framework:
+    type: arduino
+
+logger:
+
+api:
+  encryption:
+    key: !secret api_encryption_key
+  on_client_connected:
+    - delay: 20s
+    - component.update: epaper
+
+ota:
+  - platform: esphome
+    password: !secret ota_password
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+  manual_ip:
+    static_ip: 192.168.1.XXX
+    gateway: 192.168.1.1
+    subnet: 255.255.255.0
+    dns1: YOUR_DNS1
+    dns2: YOUR_DNS2
+  ap:
+    ssid: "YOUR_DEVICE_NAME Fallback AP"
+    password: !secret fallback_ap_password
+
+captive_portal:
+
+spi:
+  clk_pin:  GPIO7
+  mosi_pin: GPIO9
+
+time:
+  - platform: homeassistant
+    id: ha_time
+
+font:
+  - file: "fonts/weathericons-regular-webfont.ttf"
+    id: font_wi_xl
+    size: 90
+    glyphs:
+      - "\uf00d"
+      - "\uf02e"
+      - "\uf002"
+      - "\uf086"
+      - "\uf013"
+      - "\uf019"
+      - "\uf01a"
+      - "\uf01b"
+      - "\uf017"
+      - "\uf01e"
+      - "\uf021"
+      - "\uf014"
+      - "\uf015"
+      - "\uf07b"
+
+  - file: "fonts/weathericons-regular-webfont.ttf"
+    id: font_wi_md
+    size: 28
+    glyphs:
+      - "\uf00d"
+      - "\uf02e"
+      - "\uf002"
+      - "\uf086"
+      - "\uf013"
+      - "\uf019"
+      - "\uf01a"
+      - "\uf01b"
+      - "\uf017"
+      - "\uf01e"
+      - "\uf021"
+      - "\uf014"
+      - "\uf015"
+      - "\uf07b"
+
+  - file: "fonts/weathericons-regular-webfont.ttf"
+    id: font_wi_sm
+    size: 20
+    glyphs:
+      - "\uf00d"
+      - "\uf02e"
+      - "\uf002"
+      - "\uf086"
+      - "\uf013"
+      - "\uf019"
+      - "\uf01a"
+      - "\uf01b"
+      - "\uf017"
+      - "\uf01e"
+      - "\uf021"
+      - "\uf014"
+      - "\uf015"
+      - "\uf07b"
+
+  - file: "gfonts://Inter@700"
+    id: font_temp_num
+    size: 72
+    bpp: 4
+    glyphs: "0123456789-"
+
+  # Unit label beside the large temperature — slightly larger than body
+  # for visual proportion against the 72pt number
+  - file: "gfonts://Inter@600"
+    id: font_unit
+    size: 28
+    bpp: 4
+    glyphs: "\u00b0C"
+
+  - file: "gfonts://Inter@600"
+    id: font_heading
+    size: 22
+    bpp: 4
+    glyphs: " !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~\u00b0\u2019"
+
+  - file: "gfonts://Inter@400"
+    id: font_body
+    size: 16
+    bpp: 4
+    glyphs: " !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~\u00b0\u2019"
+
+  - file: "gfonts://Noto+Sans@700"
+    id: font_small
+    size: 18
+    bpp: 4
+    glyphs: " !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~\u00b0\u2019"
+
+  # White-text variant — bpp:1 required for correct white-on-black rendering.
+  # bpp:4 applies fade_to_black() which collapses Color(0,0,0) to black on ALL
+  # pixels (including background), creating a solid white box instead of text.
+  # bpp:1 only draws foreground pixels, leaving background pixels untouched.
+  - file: "gfonts://Noto+Sans@700"
+    id: font_small_inv
+    size: 18
+    bpp: 1
+    glyphs: " !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~\u00b0\u2019"
+
+  # Calendar event text — 14px fits comfortably in 36px (1-hour) blocks
+  # font_event     : bpp:4 for Brad events (black text)
+  # font_event_inv : bpp:1 required for white text; bpp:4 inverts background pixels
+  - file: "gfonts://Noto+Sans@700"
+    id: font_event
+    size: 14
+    bpp: 4
+    glyphs: " !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~\u00b0\u2019"
+
+  - file: "gfonts://Noto+Sans@700"
+    id: font_event_inv
+    size: 14
+    bpp: 1
+    glyphs: " !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~\u00b0\u2019"
+
+  # Dedicated bold font for numeric forecast temperatures (hourly + daily)
+  # Inter 700 at 15pt — crisp digits on e-ink
+  - file: "gfonts://Inter@700"
+    id: font_forecast_temp
+    size: 15
+    bpp: 4
+    glyphs: "0123456789-/ AMP\u00b0C"
+
+sensor:
+  - platform: homeassistant
+    entity_id: weather.YOUR_WEATHER_ENTITY
+    attribute: temperature
+    id: current_temp
+    internal: true
+
+  - platform: homeassistant
+    entity_id: weather.YOUR_WEATHER_ENTITY
+    attribute: apparent_temperature
+    id: feels_like_temp
+    internal: true
+
+text_sensor:
+  - platform: homeassistant
+    entity_id: weather.YOUR_WEATHER_ENTITY
+    id: current_condition
+    internal: true
+
+  - platform: homeassistant
+    entity_id: sensor.trmnl_date
+    id: current_date
+    internal: true
+
+  # Hourly forecast
+  - platform: homeassistant
+    entity_id: sensor.trmnl_hourly_1
+    id: hourly_1
+    internal: true
+  - platform: homeassistant
+    entity_id: sensor.trmnl_hourly_2
+    id: hourly_2
+    internal: true
+  - platform: homeassistant
+    entity_id: sensor.trmnl_hourly_3
+    id: hourly_3
+    internal: true
+  - platform: homeassistant
+    entity_id: sensor.trmnl_hourly_4
+    id: hourly_4
+    internal: true
+  - platform: homeassistant
+    entity_id: sensor.trmnl_hourly_5
+    id: hourly_5
+    internal: true
+
+  # Daily forecast (8 days)
+  - platform: homeassistant
+    entity_id: sensor.trmnl_daily_1
+    id: daily_1
+    internal: true
+  - platform: homeassistant
+    entity_id: sensor.trmnl_daily_2
+    id: daily_2
+    internal: true
+  - platform: homeassistant
+    entity_id: sensor.trmnl_daily_3
+    id: daily_3
+    internal: true
+  - platform: homeassistant
+    entity_id: sensor.trmnl_daily_4
+    id: daily_4
+    internal: true
+  - platform: homeassistant
+    entity_id: sensor.trmnl_daily_5
+    id: daily_5
+    internal: true
+  - platform: homeassistant
+    entity_id: sensor.trmnl_daily_6
+    id: daily_6
+    internal: true
+  - platform: homeassistant
+    entity_id: sensor.trmnl_daily_7
+    id: daily_7
+    internal: true
+  - platform: homeassistant
+    entity_id: sensor.trmnl_daily_8
+    id: daily_8
+    internal: true
+
+  # Calendar events — reads the 'events' attribute from each template sensor
+  # Attribute contains newline-delimited "H:MM AM|Title" lines, no 255-char limit
+  - platform: homeassistant
+    entity_id: sensor.trmnl_brad_today_events
+    attribute: events
+    id: brad_today_events
+    internal: true
+  - platform: homeassistant
+    entity_id: sensor.trmnl_brad_tomorrow_events
+    attribute: events
+    id: brad_tmrw_events
+    internal: true
+  - platform: homeassistant
+    entity_id: sensor.trmnl_family_today_events
+    attribute: events
+    id: family_today_events
+    internal: true
+  - platform: homeassistant
+    entity_id: sensor.trmnl_family_tomorrow_events
+    attribute: events
+    id: family_tmrw_events
+    internal: true
+  - platform: homeassistant
+    entity_id: sensor.trmnl_partner_today_events
+    attribute: events
+    id: partner_today_events
+    internal: true
+  - platform: homeassistant
+    entity_id: sensor.trmnl_kelly_tomorrow_events
+    attribute: events
+    id: partner_tmrw_events
+    internal: true
+
+button:
+  - platform: template
+    name: "Refresh Display"
+    on_press:
+      - component.update: epaper
+
+display:
+  - platform: waveshare_epaper
+    id: epaper
+    model: 7.50inv2
+    cs_pin:    GPIO44
+    dc_pin:    GPIO10
+    reset_pin: GPIO38
+    busy_pin:
+      number:   GPIO4
+      inverted: true
+    update_interval: never
+    lambda: |-
+
+      // ── Helpers ──────────────────────────────────────────
+
+      auto wx = [](const std::string& c) -> const char* {
+        if (c == "sunny")                               return "\xef\x80\x8d";
+        if (c == "clear-night")                         return "\xef\x80\xae";
+        if (c == "partlycloudy")                        return "\xef\x80\x82";
+        if (c == "cloudy")                              return "\xef\x80\x93";
+        if (c == "rainy")                               return "\xef\x80\x99";
+        if (c == "pouring")                             return "\xef\x80\x9a";
+        if (c == "snowy")                               return "\xef\x80\x9b";
+        if (c == "snowy-rainy")                         return "\xef\x80\x97";
+        if (c == "lightning" || c == "lightning-rainy") return "\xef\x80\x9e";
+        if (c == "windy"     || c == "windy-variant")   return "\xef\x80\xa1";
+        if (c == "fog"       || c == "hazy")            return "\xef\x80\x94";
+        if (c == "hail")                                return "\xef\x80\x95";
+        return                                                 "\xef\x81\xbb";
+      };
+
+      auto fld = [](const std::string& s, int n) -> std::string {
+        size_t start = 0;
+        int    count = 0;
+        size_t pipe;
+        while ((pipe = s.find('|', start)) != std::string::npos) {
+          if (count == n) return s.substr(start, pipe - start);
+          count++;
+          start = pipe + 1;
+        }
+        if (count == n) return s.substr(start);
+        return "";
+      };
+
+      auto ok = [](const std::string& s) -> bool {
+        return !s.empty() && s != "unavailable" && s != "unknown";
+      };
+
+      auto has_event = [&fld](const std::string& s) -> bool {
+        return !s.empty() && s != "unavailable" && s != "unknown"
+               && fld(s, 0) != "--";
+      };
+
+      // ── Guard ─────────────────────────────────────────────
+      if (!ok(id(current_condition).state)) {
+        it.print(400, 240, id(font_heading), TextAlign::CENTER, "Connecting to HA...");
+        return;
+      }
+
+      // ── Dividers ──────────────────────────────────────────
+      it.filled_rectangle(374, 0, 4, 480);   // left/right panel — thick bar
+      it.line(588, 0, 588, 480);              // TODAY/TOMORROW — thin 1px line
+
+
+      // ══════════════════════════════════════════════════════
+      // LEFT PANEL — WEATHER  (x=0..373)
+      // ══════════════════════════════════════════════════════
+
+      // Large weather icon centred at x=90
+      const std::string& cond = id(current_condition).state;
+      it.print(90, 56, id(font_wi_xl), TextAlign::CENTER, wx(cond));
+
+      // Temperature number — right-aligned so °C always sits flush beside it
+      // Right edge fixed at x=298; for worst-case "-25" (~120px) left edge ~x=178
+      if (!isnan(id(current_temp).state)) {
+        char t[6];
+        snprintf(t, sizeof(t), "%d", (int)roundf(id(current_temp).state));
+        it.print(298, 56, id(font_temp_num), TextAlign::CENTER_RIGHT, t);
+
+        // °C unit — immediately right of number, vertically centred on the number
+        // font_unit is 28pt Inter 600; y=32 centres it against the 72pt number
+        // U+00B0 = \xc2\xb0 in UTF-8; adjacent "C" literal concatenates cleanly
+        it.print(303, 56, id(font_unit), TextAlign::CENTER_LEFT, "\xc2\xb0" "C");
+      }
+
+      // Feels like — under the temperature block
+      if (!isnan(id(feels_like_temp).state)) {
+        char fl[24];
+        snprintf(fl, sizeof(fl), "Feels like %d%sC",
+                 (int)roundf(id(feels_like_temp).state), "\xc2\xb0");
+        it.print(280, 108, id(font_small), TextAlign::TOP_CENTER, fl);
+      }
+
+      // Condition text — directly under the weather icon
+      {
+        std::string cd = cond;
+        if (!cd.empty()) cd[0] = (char)toupper((unsigned char)cd[0]);
+        for (char& ch : cd) if (ch == '-') ch = ' ';
+        it.print(90, 112, id(font_body), TextAlign::TOP_CENTER, cd.c_str());
+      }
+
+      // Date — larger, centred across full left panel
+      if (ok(id(current_date).state))
+        it.print(187, 148, id(font_heading), TextAlign::TOP_CENTER,
+                 id(current_date).state.c_str());
+
+      it.line(12, 174, 362, 174);
+
+      // ── Hourly forecast ───────────────────────────────────
+      {
+        char dg[8];
+        { const auto& r = id(hourly_1).state; if (ok(r)) {
+            it.print( 47, 180, id(font_forecast_temp), TextAlign::TOP_CENTER, fld(r,0).c_str());
+            it.print( 47, 198, id(font_wi_md),  TextAlign::TOP_CENTER, wx(fld(r,2)));
+            snprintf(dg, sizeof(dg), "%s%sC", fld(r,1).c_str(), "\xc2\xb0");
+            it.print( 47, 238, id(font_forecast_temp), TextAlign::TOP_CENTER, dg); } }
+        { const auto& r = id(hourly_2).state; if (ok(r)) {
+            it.print(117, 180, id(font_forecast_temp), TextAlign::TOP_CENTER, fld(r,0).c_str());
+            it.print(117, 198, id(font_wi_md),  TextAlign::TOP_CENTER, wx(fld(r,2)));
+            snprintf(dg, sizeof(dg), "%s%sC", fld(r,1).c_str(), "\xc2\xb0");
+            it.print(117, 238, id(font_forecast_temp), TextAlign::TOP_CENTER, dg); } }
+        { const auto& r = id(hourly_3).state; if (ok(r)) {
+            it.print(187, 180, id(font_forecast_temp), TextAlign::TOP_CENTER, fld(r,0).c_str());
+            it.print(187, 198, id(font_wi_md),  TextAlign::TOP_CENTER, wx(fld(r,2)));
+            snprintf(dg, sizeof(dg), "%s%sC", fld(r,1).c_str(), "\xc2\xb0");
+            it.print(187, 238, id(font_forecast_temp), TextAlign::TOP_CENTER, dg); } }
+        { const auto& r = id(hourly_4).state; if (ok(r)) {
+            it.print(257, 180, id(font_forecast_temp), TextAlign::TOP_CENTER, fld(r,0).c_str());
+            it.print(257, 198, id(font_wi_md),  TextAlign::TOP_CENTER, wx(fld(r,2)));
+            snprintf(dg, sizeof(dg), "%s%sC", fld(r,1).c_str(), "\xc2\xb0");
+            it.print(257, 238, id(font_forecast_temp), TextAlign::TOP_CENTER, dg); } }
+        { const auto& r = id(hourly_5).state; if (ok(r)) {
+            it.print(327, 180, id(font_forecast_temp), TextAlign::TOP_CENTER, fld(r,0).c_str());
+            it.print(327, 198, id(font_wi_md),  TextAlign::TOP_CENTER, wx(fld(r,2)));
+            snprintf(dg, sizeof(dg), "%s%sC", fld(r,1).c_str(), "\xc2\xb0");
+            it.print(327, 238, id(font_forecast_temp), TextAlign::TOP_CENTER, dg); } }
+      }
+
+      it.line(12, 262, 362, 262);
+
+      // ── 8-day forecast in 2 columns of 4 ─────────────────
+      it.line(186, 264, 186, 476);
+      {
+        char hl[20];
+        { const auto& r = id(daily_1).state; if (ok(r)) { int cy=290;
+            it.print( 14,cy,id(font_small),TextAlign::CENTER_LEFT,fld(r,0).c_str());
+            it.print( 82,cy,id(font_wi_sm),TextAlign::CENTER,wx(fld(r,3)));
+            snprintf(hl,sizeof(hl),"%s/%s%sC",fld(r,1).c_str(),fld(r,2).c_str(),"\xc2\xb0");
+            it.print(106,cy,id(font_forecast_temp),TextAlign::CENTER_LEFT,hl); } }
+        { const auto& r = id(daily_2).state; if (ok(r)) { int cy=343;
+            it.print( 14,cy,id(font_small),TextAlign::CENTER_LEFT,fld(r,0).c_str());
+            it.print( 82,cy,id(font_wi_sm),TextAlign::CENTER,wx(fld(r,3)));
+            snprintf(hl,sizeof(hl),"%s/%s%sC",fld(r,1).c_str(),fld(r,2).c_str(),"\xc2\xb0");
+            it.print(106,cy,id(font_forecast_temp),TextAlign::CENTER_LEFT,hl); } }
+        { const auto& r = id(daily_3).state; if (ok(r)) { int cy=396;
+            it.print( 14,cy,id(font_small),TextAlign::CENTER_LEFT,fld(r,0).c_str());
+            it.print( 82,cy,id(font_wi_sm),TextAlign::CENTER,wx(fld(r,3)));
+            snprintf(hl,sizeof(hl),"%s/%s%sC",fld(r,1).c_str(),fld(r,2).c_str(),"\xc2\xb0");
+            it.print(106,cy,id(font_forecast_temp),TextAlign::CENTER_LEFT,hl); } }
+        { const auto& r = id(daily_4).state; if (ok(r)) { int cy=449;
+            it.print( 14,cy,id(font_small),TextAlign::CENTER_LEFT,fld(r,0).c_str());
+            it.print( 82,cy,id(font_wi_sm),TextAlign::CENTER,wx(fld(r,3)));
+            snprintf(hl,sizeof(hl),"%s/%s%sC",fld(r,1).c_str(),fld(r,2).c_str(),"\xc2\xb0");
+            it.print(106,cy,id(font_forecast_temp),TextAlign::CENTER_LEFT,hl); } }
+        { const auto& r = id(daily_5).state; if (ok(r)) { int cy=290;
+            it.print(204,cy,id(font_small),TextAlign::CENTER_LEFT,fld(r,0).c_str());
+            it.print(272,cy,id(font_wi_sm),TextAlign::CENTER,wx(fld(r,3)));
+            snprintf(hl,sizeof(hl),"%s/%s%sC",fld(r,1).c_str(),fld(r,2).c_str(),"\xc2\xb0");
+            it.print(296,cy,id(font_forecast_temp),TextAlign::CENTER_LEFT,hl); } }
+        { const auto& r = id(daily_6).state; if (ok(r)) { int cy=343;
+            it.print(204,cy,id(font_small),TextAlign::CENTER_LEFT,fld(r,0).c_str());
+            it.print(272,cy,id(font_wi_sm),TextAlign::CENTER,wx(fld(r,3)));
+            snprintf(hl,sizeof(hl),"%s/%s%sC",fld(r,1).c_str(),fld(r,2).c_str(),"\xc2\xb0");
+            it.print(296,cy,id(font_forecast_temp),TextAlign::CENTER_LEFT,hl); } }
+        { const auto& r = id(daily_7).state; if (ok(r)) { int cy=396;
+            it.print(204,cy,id(font_small),TextAlign::CENTER_LEFT,fld(r,0).c_str());
+            it.print(272,cy,id(font_wi_sm),TextAlign::CENTER,wx(fld(r,3)));
+            snprintf(hl,sizeof(hl),"%s/%s%sC",fld(r,1).c_str(),fld(r,2).c_str(),"\xc2\xb0");
+            it.print(296,cy,id(font_forecast_temp),TextAlign::CENTER_LEFT,hl); } }
+        { const auto& r = id(daily_8).state; if (ok(r)) { int cy=449;
+            it.print(204,cy,id(font_small),TextAlign::CENTER_LEFT,fld(r,0).c_str());
+            it.print(272,cy,id(font_wi_sm),TextAlign::CENTER,wx(fld(r,3)));
+            snprintf(hl,sizeof(hl),"%s/%s%sC",fld(r,1).c_str(),fld(r,2).c_str(),"\xc2\xb0");
+            it.print(296,cy,id(font_forecast_temp),TextAlign::CENTER_LEFT,hl); } }
+      }
+
+
+      // ══════════════════════════════════════════════════════════
+      // RIGHT PANEL — RESPONSIVE 2x2 GRID
+      //   Columns : TODAY (x=394..587)  |  TOMORROW (x=594..788)
+      //   Rows    : BRAD  (dynamic height, up to 10 events)
+      //             FAMILY (starts below Brad, up to 4 events)
+      //
+      // Each calendar section is stored in a single input_text entity
+      // as newline-delimited "H:MM AM|Event title" lines.
+      // Brad/Family horizontal divider position is calculated after
+      // drawing both Brad columns so it always sits below the tallest.
+      // ══════════════════════════════════════════════════════════
+
+      // ── Parse a newline-delimited event string into a vector ─────
+      // Each element is "H:MM AM|Event title"
+      // Uses char(10) for newline and char(13) for CR to avoid YAML escape issues
+      auto parse_ev = [](const std::string& s) -> std::vector<std::string> {
+        std::vector<std::string> out;
+        if (s.empty() || s == "unavailable" || s == "unknown") return out;
+        const char LF = char(10);
+        const char CR = char(13);
+        size_t start = 0, nl;
+        while ((nl = s.find(LF, start)) != std::string::npos) {
+          std::string line = s.substr(start, nl - start);
+          if (!line.empty() && line.back() == CR) line.pop_back();
+          if (!line.empty()) out.push_back(line);
+          start = nl + 1;
+        }
+        if (start < s.size()) {
+          std::string line = s.substr(start);
+          if (!line.empty() && line.back() == CR) line.pop_back();
+          if (!line.empty()) out.push_back(line);
+        }
+        return out;
+      };
+
+      // ── Parse "HH:MM" → minutes since midnight; -1 = allday/invalid ──────
+      auto tmin = [](const std::string& s) -> int {
+        if (s.size() < 5 || s[2] != ':') return -1;
+        if (!isdigit((unsigned char)s[0]) || !isdigit((unsigned char)s[1])) return -1;
+        if (!isdigit((unsigned char)s[3]) || !isdigit((unsigned char)s[4])) return -1;
+        int h = (s[0]-'0')*10 + (s[1]-'0');
+        int m = (s[3]-'0')*10 + (s[4]-'0');
+        return h * 60 + m;
+      };
+
+      // Calendar time range is fixed 8 AM – 8 PM for both columns
+
+      // ── Draw one time-blocked calendar column ─────────────────────────────
+      // Event types (typv):  0 = Brad   (outline, white fill, black text)
+      //                      1 = Family  (black fill, white text)
+      //                      2 = Kelly   (double outline, white fill, black text)
+      // Changes vs previous:
+      //   • Kelly events with double-outline
+      //   • 30-min minimum visual block height (15-min slots readable)
+      //   • All events shown regardless of whether they are past
+      //   • "No Scheduled Events Today" when N=0
+      auto draw_cal_col = [&](int col_x, int col_end, bool is_today,
+          const std::vector<std::string>& brad_evs,
+          const std::vector<std::string>& fam_evs,
+          const std::vector<std::string>& kelly_evs) {
+
+        const int LBL_W   = 26;
+        const int EV_X    = col_x + LBL_W + 2;
+        const int EV_W    = col_end - EV_X - 2;
+        const int COL_CX  = (col_x + col_end) / 2;
+        const Color WHITE_CLR(0, 0, 0);
+
+        // ── Time range: fixed 8 AM – 8 PM ───────────────────────────────────
+        const int  CAL_H0     = 8;
+        const int  CAL_H1     = 20;
+        const int  CAL_HOURS  = CAL_H1 - CAL_H0;   // 12 hours
+        const int CAL_Y0 = 44;
+        const int CAL_Y1 = 476;
+        float PX_PER_MIN = (float)(CAL_Y1 - CAL_Y0) / (float)(CAL_HOURS * 60);
+
+        auto miny = [&](int m) -> int {
+          int off = m - CAL_H0 * 60;
+          off = std::max(0, std::min(off, CAL_HOURS * 60));
+          return CAL_Y0 + (int)((float)off * PX_PER_MIN);
+        };
+
+        // ── Hour grid lines + labels ────────────────────────────────────────
+        for (int h = CAL_H0; h <= CAL_H1; h++) {
+          int y = miny(h * 60);
+          it.line(EV_X, y, EV_X + EV_W, y);
+          if (h % 2 == 0 && h < CAL_H1) {
+            char lbl[5];
+            if (h == 24) {
+              snprintf(lbl, sizeof(lbl), "12A");
+            } else {
+              int h12 = (h > 12) ? (h-12) : ((h==0) ? 12 : h);
+              snprintf(lbl, sizeof(lbl), "%d%s", h12, (h>=12) ? "P" : "A");
+            }
+            it.print(EV_X - 2, y - 8, id(font_forecast_temp), TextAlign::TOP_RIGHT, lbl);
+          }
+        }
+
+        // ── Combine all events into parallel vectors ────────────────────────
+        std::vector<int>         m1v, m2v, typv;
+        std::vector<std::string> tiv;
+
+        auto add_events = [&](const std::vector<std::string>& src, int type) {
+          for (const auto& ev : src) {
+            std::string s1=fld(ev,0), s2=fld(ev,1), ti=fld(ev,2);
+            bool ad = (s1=="allday"||s1.empty());
+            int a = ad ? CAL_H0*60 : tmin(s1);
+            int b = ad ? CAL_H0*60+60 : (tmin(s2)>0 ? tmin(s2) : a+60);
+            if (a < 0) continue;
+            m1v.push_back(a); m2v.push_back(b);
+            typv.push_back(type); tiv.push_back(ti);
+          }
+        };
+
+        add_events(brad_evs,  0);
+        add_events(fam_evs,   1);
+        add_events(kelly_evs, 2);
+
+        int N = (int)m1v.size();
+
+        // ── No events at all: centered 4-line message ──────────────────────
+        if (N == 0) {
+          const char* words[] = {"No", "Scheduled", "Events", "Today"};
+          int total_h = 3 * 44 + 22;   // 4 words, 44px double-space between starts
+          int msg_y   = CAL_Y0 + (CAL_Y1 - CAL_Y0 - total_h) / 2;
+          for (int i = 0; i < 4; i++)
+            it.print(COL_CX, msg_y + i*44, id(font_heading), TextAlign::TOP_CENTER, words[i]);
+          return;
+        }
+
+        // ── Sort by start time ─────────────────────────────────────────────
+        std::vector<int> idx(N);
+        for (int i = 0; i < N; i++) idx[i] = i;
+        std::sort(idx.begin(), idx.end(),
+            [&m1v](int a, int b){ return m1v[a] < m1v[b]; });
+
+        // ── Pre-compute display end times (with 45-min minimum) ────────────
+        // Lane assignment uses display ends so visually padded short events
+        // (e.g. 9:10-9:25 padded to 9:55) don't collide with the next slot
+        std::vector<int> m2d(N);
+        for (int i = 0; i < N; i++) m2d[i] = std::max(m2v[i], m1v[i] + 45);
+
+        // ── Greedy lane assignment (up to 2 lanes) ─────────────────────────
+        std::vector<int> lane_v(N, 0);
+        int le0=-1, le1=-1, max_lane=0;
+        for (int si : idx) {
+          if      (m1v[si] >= le0) { lane_v[si]=0; le0=m2d[si]; }
+          else if (m1v[si] >= le1) { lane_v[si]=1; le1=m2d[si]; max_lane=1; }
+          else                     { lane_v[si]=1; le1=std::max(le1,m2d[si]); max_lane=1; }
+        }
+        // ── Draw each event ────────────────────────────────────────────────
+        // Width is per-event: full-width if no visual overlap, half if competing.
+        // A global num_lanes would incorrectly narrow ALL events the moment any
+        // single pair overlaps — this loop checks each event individually instead.
+        for (int si : idx) {
+          bool overlaps = false;
+          for (int j = 0; j < N; j++) {
+            if (j == si) continue;
+            if (m1v[si] < m2d[j] && m1v[j] < m2d[si]) { overlaps = true; break; }
+          }
+          int lw = overlaps ? (EV_W - 1) / 2 : EV_W;
+          int lx = EV_X + (overlaps ? lane_v[si] * (lw + 1) : 0);
+          int y1 = miny(m1v[si]);
+
+          // Enforce 45-min minimum visual height — gives 14px font room to breathe
+          int m2_disp = std::max(m2v[si], m1v[si] + 45);
+          int y2 = miny(m2_disp);
+          int bh = std::max(14, y2 - y1);
+
+          // Skip only events fully outside the visible grid
+          if (y1 >= CAL_Y1 || miny(m2v[si]) <= CAL_Y0) continue;
+          if (y1 < CAL_Y0) { bh -= (CAL_Y0-y1); y1 = CAL_Y0; }
+          bh = std::min(bh, CAL_Y1 - y1);
+          if (bh < 1) continue;
+
+          // ── Text layout ─────────────────────────────────────────────────
+          const int PAD  = 3;
+          const int KPAD = 5;   // extra padding for Kelly's inner outline
+          // ~7px/char at 14px Noto Bold (7 more accurate than 9 for typical text)
+          int max_ch = std::max(3, (lw - PAD*2) / 7);
+          std::string l1 = tiv[si], l2 = "";
+          bool two = false;
+
+          if (bh >= 32) {
+            // Two-line: word-wrap so both lines get meaningful content
+            if ((int)l1.size() > max_ch) {
+              int sp = max_ch;
+              while (sp > 0 && l1[sp-1] != ' ') sp--;
+              if (sp <= 0) sp = max_ch;
+              l2 = l1.substr(sp);
+              while (!l2.empty() && l2[0]==' ') l2.erase(l2.begin());
+              if ((int)l2.size() > max_ch) l2 = l2.substr(0, max_ch-2) + "..";
+              l1 = l1.substr(0, sp);
+              while (!l1.empty() && l1.back()==' ') l1.pop_back();
+            }
+            two = !l2.empty();
+          } else {
+            // Single-line: hard truncate — no word-boundary stop, so
+            // "Kids Pizza lunch" shows "Kids Piz.." not just "Kids"
+            if ((int)l1.size() > max_ch) l1 = l1.substr(0, max_ch-2) + "..";
+          }
+
+          int type = typv[si];
+
+          if (type == 1) {
+            // ── Family: black fill, white text (bpp:1 font) ─────────────
+            it.filled_rectangle(lx, y1, lw, bh);
+            if (bh >= 14) {
+              if (two) {
+                it.print(lx+PAD, y1+2,  id(font_event_inv), WHITE_CLR, l1.c_str());
+                it.print(lx+PAD, y1+16, id(font_event_inv), WHITE_CLR, l2.c_str());
+              } else {
+                int ty = y1 + std::max(0, (bh-14)/2);
+                it.print(lx+PAD, ty, id(font_event_inv), WHITE_CLR, l1.c_str());
+              }
+            }
+          } else if (type == 2) {
+            // ── Kelly: white fill, double outline, black text ────────────
+            it.filled_rectangle(lx+1, y1, lw-2, bh, WHITE_CLR);   // white fill
+            it.rectangle(lx, y1, lw, bh);                           // outer outline
+            if (lw > 4 && bh > 4)
+              it.rectangle(lx+2, y1+2, lw-4, bh-4);               // inner outline
+            if (bh >= 14) {
+              if (two) {
+                it.print(lx+KPAD, y1+3,  id(font_event), l1.c_str());
+                it.print(lx+KPAD, y1+19, id(font_event), l2.c_str());
+              } else {
+                int ty = y1 + std::max(0, (bh-14)/2);
+                it.print(lx+KPAD, ty, id(font_event), l1.c_str());
+              }
+            }
+          } else {
+            // ── Brad: white fill, single outline, black text ─────────────
+            it.filled_rectangle(lx+1, y1, lw-2, bh, WHITE_CLR);
+            it.rectangle(lx, y1, lw, bh);
+            if (bh >= 14) {
+              if (two) {
+                it.print(lx+PAD, y1+2,  id(font_event), l1.c_str());
+                it.print(lx+PAD, y1+16, id(font_event), l2.c_str());
+              } else {
+                int ty = y1 + std::max(0, (bh-14)/2);
+                it.print(lx+PAD, ty, id(font_event), l1.c_str());
+              }
+            }
+          }
+        }
+
+      };
+
+      // ── Parse all six calendar strings ────────────────────────────────────
+      auto b_today    = parse_ev(id(brad_today_events).state);
+      auto b_tmrw     = parse_ev(id(brad_tmrw_events).state);
+      auto f_today    = parse_ev(id(family_today_events).state);
+      auto f_tmrw     = parse_ev(id(family_tmrw_events).state);
+      auto k_today    = parse_ev(id(partner_today_events).state);
+      auto k_tmrw     = parse_ev(id(partner_tmrw_events).state);
+
+      // ── RIGHT PANEL — column headers + time-blocked columns ───────────────
+      it.print(491, 8, id(font_heading), TextAlign::TOP_CENTER, "TODAY");
+      it.print(688, 8, id(font_heading), TextAlign::TOP_CENTER, "TOMORROW");
+      it.line(394, 36, 788, 36);
+      it.line(588, 36, 588, 480);
+
+      draw_cal_col(394, 586, true,  b_today, f_today, k_today);
+      draw_cal_col(590, 786, false, b_tmrw,  f_tmrw,  k_tmrw);
