@@ -1,0 +1,374 @@
+# ==============================================================
+# Home Assistant — TRMNL Display Data Sensors  (v7)
+# Save as /config/packages/trmnl.yaml
+#
+# Calendar approach: trigger-based template sensors where
+#   state  = short event count (under 255 chars)
+#   attributes.events = full newline-delimited event list
+# ESPHome reads the attribute directly via the homeassistant
+# text_sensor 'attribute:' key — no input_text helpers needed.
+# ==============================================================
+
+template:
+
+  # ------------------------------------------------------------
+  # STATIC — Date string
+  # ------------------------------------------------------------
+  - sensor:
+      - name: "TRMNL Date"
+        unique_id: trmnl_date
+        state: "{{ now().strftime('%a, %b %-d') }}"
+
+
+  # ------------------------------------------------------------
+  # HOURLY FORECAST — next 5 hours
+  # Format: "H PM|temp_int|condition"
+  # ------------------------------------------------------------
+  - trigger:
+      - platform: time_pattern
+        minutes: "/15"
+      - platform: homeassistant
+        event: start
+    action:
+      - action: weather.get_forecasts
+        target:
+          entity_id: weather.YOUR_WEATHER_ENTITY
+        data:
+          type: hourly
+        response_variable: hourly_resp
+    sensor:
+      - name: "TRMNL Hourly 1"
+        unique_id: trmnl_hourly_1
+        state: >-
+          {% set fc = hourly_resp['weather.YOUR_WEATHER_ENTITY'].forecast %}
+          {% if fc | length > 1 %}{{ (fc[1].datetime | as_datetime | as_local).strftime('%-I %p') }}|{{ fc[1].temperature | round(0) | int }}|{{ fc[1].condition }}{% else %}--|0|sunny{% endif %}
+
+      - name: "TRMNL Hourly 2"
+        unique_id: trmnl_hourly_2
+        state: >-
+          {% set fc = hourly_resp['weather.YOUR_WEATHER_ENTITY'].forecast %}
+          {% if fc | length > 2 %}{{ (fc[2].datetime | as_datetime | as_local).strftime('%-I %p') }}|{{ fc[2].temperature | round(0) | int }}|{{ fc[2].condition }}{% else %}--|0|sunny{% endif %}
+
+      - name: "TRMNL Hourly 3"
+        unique_id: trmnl_hourly_3
+        state: >-
+          {% set fc = hourly_resp['weather.YOUR_WEATHER_ENTITY'].forecast %}
+          {% if fc | length > 3 %}{{ (fc[3].datetime | as_datetime | as_local).strftime('%-I %p') }}|{{ fc[3].temperature | round(0) | int }}|{{ fc[3].condition }}{% else %}--|0|sunny{% endif %}
+
+      - name: "TRMNL Hourly 4"
+        unique_id: trmnl_hourly_4
+        state: >-
+          {% set fc = hourly_resp['weather.YOUR_WEATHER_ENTITY'].forecast %}
+          {% if fc | length > 4 %}{{ (fc[4].datetime | as_datetime | as_local).strftime('%-I %p') }}|{{ fc[4].temperature | round(0) | int }}|{{ fc[4].condition }}{% else %}--|0|sunny{% endif %}
+
+      - name: "TRMNL Hourly 5"
+        unique_id: trmnl_hourly_5
+        state: >-
+          {% set fc = hourly_resp['weather.YOUR_WEATHER_ENTITY'].forecast %}
+          {% if fc | length > 5 %}{{ (fc[5].datetime | as_datetime | as_local).strftime('%-I %p') }}|{{ fc[5].temperature | round(0) | int }}|{{ fc[5].condition }}{% else %}--|0|sunny{% endif %}
+
+
+  # ------------------------------------------------------------
+  # DAILY FORECAST — 8 days
+  # Format: "Day|high_int|low_int|condition"
+  # ------------------------------------------------------------
+  - trigger:
+      - platform: time_pattern
+        minutes: "/30"
+      - platform: homeassistant
+        event: start
+    action:
+      - action: weather.get_forecasts
+        target:
+          entity_id: weather.YOUR_WEATHER_ENTITY
+        data:
+          type: daily
+        response_variable: daily_resp
+    sensor:
+      - name: "TRMNL Daily 1"
+        unique_id: trmnl_daily_1
+        state: >-
+          {% set fc = daily_resp['weather.YOUR_WEATHER_ENTITY'].forecast %}
+          {% if fc | length > 0 %}{% set d = fc[0] %}{% if (d.datetime | as_datetime | as_local).strftime('%Y-%m-%d') == now().strftime('%Y-%m-%d') %}Today{% else %}{{ (d.datetime | as_datetime | as_local).strftime('%a') }}{% endif %}|{{ d.temperature | round(0) | int }}|{{ d.templow | default(d.temperature) | round(0) | int }}|{{ d.condition }}{% else %}---|0|0|sunny{% endif %}
+
+      - name: "TRMNL Daily 2"
+        unique_id: trmnl_daily_2
+        state: >-
+          {% set fc = daily_resp['weather.YOUR_WEATHER_ENTITY'].forecast %}
+          {% if fc | length > 1 %}{% set d = fc[1] %}{{ (d.datetime | as_datetime | as_local).strftime('%a') }}|{{ d.temperature | round(0) | int }}|{{ d.templow | default(d.temperature) | round(0) | int }}|{{ d.condition }}{% else %}---|0|0|sunny{% endif %}
+
+      - name: "TRMNL Daily 3"
+        unique_id: trmnl_daily_3
+        state: >-
+          {% set fc = daily_resp['weather.YOUR_WEATHER_ENTITY'].forecast %}
+          {% if fc | length > 2 %}{% set d = fc[2] %}{{ (d.datetime | as_datetime | as_local).strftime('%a') }}|{{ d.temperature | round(0) | int }}|{{ d.templow | default(d.temperature) | round(0) | int }}|{{ d.condition }}{% else %}---|0|0|sunny{% endif %}
+
+      - name: "TRMNL Daily 4"
+        unique_id: trmnl_daily_4
+        state: >-
+          {% set fc = daily_resp['weather.YOUR_WEATHER_ENTITY'].forecast %}
+          {% if fc | length > 3 %}{% set d = fc[3] %}{{ (d.datetime | as_datetime | as_local).strftime('%a') }}|{{ d.temperature | round(0) | int }}|{{ d.templow | default(d.temperature) | round(0) | int }}|{{ d.condition }}{% else %}---|0|0|sunny{% endif %}
+
+      - name: "TRMNL Daily 5"
+        unique_id: trmnl_daily_5
+        state: >-
+          {% set fc = daily_resp['weather.YOUR_WEATHER_ENTITY'].forecast %}
+          {% if fc | length > 4 %}{% set d = fc[4] %}{{ (d.datetime | as_datetime | as_local).strftime('%a') }}|{{ d.temperature | round(0) | int }}|{{ d.templow | default(d.temperature) | round(0) | int }}|{{ d.condition }}{% else %}---|0|0|sunny{% endif %}
+
+      - name: "TRMNL Daily 6"
+        unique_id: trmnl_daily_6
+        state: >-
+          {% set fc = daily_resp['weather.YOUR_WEATHER_ENTITY'].forecast %}
+          {% if fc | length > 5 %}{% set d = fc[5] %}{{ (d.datetime | as_datetime | as_local).strftime('%a') }}|{{ d.temperature | round(0) | int }}|{{ d.templow | default(d.temperature) | round(0) | int }}|{{ d.condition }}{% else %}---|0|0|sunny{% endif %}
+
+      - name: "TRMNL Daily 7"
+        unique_id: trmnl_daily_7
+        state: >-
+          {% set fc = daily_resp['weather.YOUR_WEATHER_ENTITY'].forecast %}
+          {% if fc | length > 6 %}{% set d = fc[6] %}{{ (d.datetime | as_datetime | as_local).strftime('%a') }}|{{ d.temperature | round(0) | int }}|{{ d.templow | default(d.temperature) | round(0) | int }}|{{ d.condition }}{% else %}---|0|0|sunny{% endif %}
+
+      - name: "TRMNL Daily 8"
+        unique_id: trmnl_daily_8
+        state: >-
+          {% set fc = daily_resp['weather.YOUR_WEATHER_ENTITY'].forecast %}
+          {% if fc | length > 7 %}{% set d = fc[7] %}{{ (d.datetime | as_datetime | as_local).strftime('%a') }}|{{ d.temperature | round(0) | int }}|{{ d.templow | default(d.temperature) | round(0) | int }}|{{ d.condition }}{% else %}---|0|0|sunny{% endif %}
+
+
+  # ------------------------------------------------------------
+  # PERSON1 CALENDAR — TODAY
+  # state     : "N events" (short, just for HA UI visibility)
+  # attributes: events — newline-delimited "H:MM AM|Title" lines
+  # ESPHome reads the attribute directly via text_sensor attribute:
+  # ------------------------------------------------------------
+  - trigger:
+      - platform: time_pattern
+        minutes: "/15"
+      - platform: homeassistant
+        event: start
+    action:
+      - action: calendar.get_events
+        target:
+          entity_id: calendar.YOUR_WORK_CALENDAR
+        data:
+          start_date_time: "{{ now().replace(hour=0, minute=0, second=0, microsecond=0).isoformat() }}"
+          end_date_time: "{{ now().replace(hour=23, minute=59, second=59).isoformat() }}"
+        response_variable: work_today
+      - action: calendar.get_events
+        target:
+          entity_id: calendar.YOUR_PERSONAL_CALENDAR
+        data:
+          start_date_time: "{{ now().replace(hour=0, minute=0, second=0, microsecond=0).isoformat() }}"
+          end_date_time: "{{ now().replace(hour=23, minute=59, second=59).isoformat() }}"
+        response_variable: personal_today
+      - action: calendar.get_events
+        target:
+          entity_id: calendar.YOUR_SPORTS_CALENDAR
+        data:
+          start_date_time: "{{ now().replace(hour=0, minute=0, second=0, microsecond=0).isoformat() }}"
+          end_date_time: "{{ now().replace(hour=23, minute=59, second=59).isoformat() }}"
+        response_variable: sports_today
+    sensor:
+      - name: "TRMNL PERSON1 Today Events"
+        unique_id: trmnl_PERSON1_today_events
+        state: >-
+          {% set w = work_today['calendar.YOUR_WORK_CALENDAR'].events | default([]) %}
+          {% set p = personal_today['calendar.YOUR_PERSONAL_CALENDAR'].events | default([]) %}
+          {% set s = sports_today['calendar.YOUR_SPORTS_CALENDAR'].events | default([]) %}
+          {{ (w + p + s) | length }} events
+        attributes:
+          events: >-
+            {% set w = work_today['calendar.YOUR_WORK_CALENDAR'].events | default([]) %}
+            {% set p = personal_today['calendar.YOUR_PERSONAL_CALENDAR'].events | default([]) %}
+            {% set s = sports_today['calendar.YOUR_SPORTS_CALENDAR'].events | default([]) %}
+            {% set all = (w + p + s) | sort(attribute='start') %}
+            {% set ns = namespace(lines=[]) %}
+            {% for e in all %}{% if 'T' in e.start %}{% set t1 = (e.start | as_datetime | as_local).strftime('%H:%M') %}{% set t2 = (e.end | as_datetime | as_local).strftime('%H:%M') %}{% else %}{% set t1 = 'allday' %}{% set t2 = 'allday' %}{% endif %}{% set ns.lines = ns.lines + [t1 + '|' + t2 + '|' + e.summary] %}{% endfor %}
+            {{ ns.lines | join('\n') }}
+
+
+  # ------------------------------------------------------------
+  # PERSON1 CALENDAR — TOMORROW
+  # ------------------------------------------------------------
+  - trigger:
+      - platform: time_pattern
+        minutes: "/15"
+      - platform: homeassistant
+        event: start
+    action:
+      - action: calendar.get_events
+        target:
+          entity_id: calendar.YOUR_WORK_CALENDAR
+        data:
+          start_date_time: "{{ (now() + timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0).isoformat() }}"
+          end_date_time: "{{ (now() + timedelta(days=1)).replace(hour=23, minute=59, second=59, microsecond=0).isoformat() }}"
+        response_variable: work_tmrw
+      - action: calendar.get_events
+        target:
+          entity_id: calendar.YOUR_PERSONAL_CALENDAR
+        data:
+          start_date_time: "{{ (now() + timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0).isoformat() }}"
+          end_date_time: "{{ (now() + timedelta(days=1)).replace(hour=23, minute=59, second=59, microsecond=0).isoformat() }}"
+        response_variable: personal_tmrw
+      - action: calendar.get_events
+        target:
+          entity_id: calendar.YOUR_SPORTS_CALENDAR
+        data:
+          start_date_time: "{{ (now() + timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0).isoformat() }}"
+          end_date_time: "{{ (now() + timedelta(days=1)).replace(hour=23, minute=59, second=59, microsecond=0).isoformat() }}"
+        response_variable: sports_tmrw
+    sensor:
+      - name: "TRMNL PERSON1 Tomorrow Events"
+        unique_id: trmnl_PERSON1_tomorrow_events
+        state: >-
+          {% set w = work_tmrw['calendar.YOUR_WORK_CALENDAR'].events | default([]) %}
+          {% set p = personal_tmrw['calendar.YOUR_PERSONAL_CALENDAR'].events | default([]) %}
+          {% set s = sports_tmrw['calendar.YOUR_SPORTS_CALENDAR'].events | default([]) %}
+          {{ (w + p + s) | length }} events
+        attributes:
+          events: >-
+            {% set w = work_tmrw['calendar.YOUR_WORK_CALENDAR'].events | default([]) %}
+            {% set p = personal_tmrw['calendar.YOUR_PERSONAL_CALENDAR'].events | default([]) %}
+            {% set s = sports_tmrw['calendar.YOUR_SPORTS_CALENDAR'].events | default([]) %}
+            {% set all = (w + p + s) | sort(attribute='start') %}
+            {% set ns = namespace(lines=[]) %}
+            {% for e in all %}{% if 'T' in e.start %}{% set t1 = (e.start | as_datetime | as_local).strftime('%H:%M') %}{% set t2 = (e.end | as_datetime | as_local).strftime('%H:%M') %}{% else %}{% set t1 = 'allday' %}{% set t2 = 'allday' %}{% endif %}{% set ns.lines = ns.lines + [t1 + '|' + t2 + '|' + e.summary] %}{% endfor %}
+            {{ ns.lines | join('\n') }}
+
+
+  # ------------------------------------------------------------
+  # FAMILY CALENDAR — TODAY
+  # ------------------------------------------------------------
+  - trigger:
+      - platform: time_pattern
+        minutes: "/15"
+      - platform: homeassistant
+        event: start
+    action:
+      - action: calendar.get_events
+        target:
+          entity_id: calendar.family
+        data:
+          start_date_time: "{{ now().replace(hour=0, minute=0, second=0, microsecond=0).isoformat() }}"
+          end_date_time: "{{ now().replace(hour=23, minute=59, second=59).isoformat() }}"
+        response_variable: fam_today
+    sensor:
+      - name: "TRMNL Family Today Events"
+        unique_id: trmnl_family_today_events
+        state: >-
+          {% set all = fam_today['calendar.family'].events | default([]) %}
+          {{ all | length }} events
+        attributes:
+          events: >-
+            {% set all = fam_today['calendar.family'].events | default([]) | sort(attribute='start') %}
+            {% set ns = namespace(lines=[]) %}
+            {% for e in all %}{% if 'T' in e.start %}{% set t1 = (e.start | as_datetime | as_local).strftime('%H:%M') %}{% set t2 = (e.end | as_datetime | as_local).strftime('%H:%M') %}{% else %}{% set t1 = 'allday' %}{% set t2 = 'allday' %}{% endif %}{% set ns.lines = ns.lines + [t1 + '|' + t2 + '|' + e.summary] %}{% endfor %}
+            {{ ns.lines | join('\n') }}
+
+
+  # ------------------------------------------------------------
+  # FAMILY CALENDAR — TOMORROW
+  # ------------------------------------------------------------
+  - trigger:
+      - platform: time_pattern
+        minutes: "/15"
+      - platform: homeassistant
+        event: start
+    action:
+      - action: calendar.get_events
+        target:
+          entity_id: calendar.family
+        data:
+          start_date_time: "{{ (now() + timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0).isoformat() }}"
+          end_date_time: "{{ (now() + timedelta(days=1)).replace(hour=23, minute=59, second=59, microsecond=0).isoformat() }}"
+        response_variable: fam_tmrw
+    sensor:
+      - name: "TRMNL Family Tomorrow Events"
+        unique_id: trmnl_family_tomorrow_events
+        state: >-
+          {% set all = fam_tmrw['calendar.family'].events | default([]) %}
+          {{ all | length }} events
+        attributes:
+          events: >-
+            {% set all = fam_tmrw['calendar.family'].events | default([]) | sort(attribute='start') %}
+            {% set ns = namespace(lines=[]) %}
+            {% for e in all %}{% if 'T' in e.start %}{% set t1 = (e.start | as_datetime | as_local).strftime('%H:%M') %}{% set t2 = (e.end | as_datetime | as_local).strftime('%H:%M') %}{% else %}{% set t1 = 'allday' %}{% set t2 = 'allday' %}{% endif %}{% set ns.lines = ns.lines + [t1 + '|' + t2 + '|' + e.summary] %}{% endfor %}
+            {{ ns.lines | join('\n') }}
+
+
+  # ------------------------------------------------------------
+  # PERSON2 CALENDAR — TODAY
+  # ------------------------------------------------------------
+  - trigger:
+      - platform: time_pattern
+        minutes: "/15"
+      - platform: homeassistant
+        event: start
+    action:
+      - action: calendar.get_events
+        target:
+          entity_id: calendar.YOUR_PARTNER_CALENDAR
+        data:
+          start_date_time: "{{ now().replace(hour=0, minute=0, second=0, microsecond=0).isoformat() }}"
+          end_date_time: "{{ now().replace(hour=23, minute=59, second=59).isoformat() }}"
+        response_variable: partner_today
+    sensor:
+      - name: "TRMNL PERSON2 Today Events"
+        unique_id: trmnl_partner_today_events
+        state: >-
+          {% set all = partner_today['calendar.YOUR_PARTNER_CALENDAR'].events | default([]) %}
+          {{ all | length }} events
+        attributes:
+          events: >-
+            {% set all = partner_today['calendar.YOUR_PARTNER_CALENDAR'].events | default([]) | sort(attribute='start') %}
+            {% set ns = namespace(lines=[]) %}
+            {% for e in all %}{% if 'T' in e.start %}{% set t1 = (e.start | as_datetime | as_local).strftime('%H:%M') %}{% set t2 = (e.end | as_datetime | as_local).strftime('%H:%M') %}{% else %}{% set t1 = 'allday' %}{% set t2 = 'allday' %}{% endif %}{% set ns.lines = ns.lines + [t1 + '|' + t2 + '|' + e.summary] %}{% endfor %}
+            {{ ns.lines | join('\n') }}
+
+
+  # ------------------------------------------------------------
+  # PERSON2 CALENDAR — TOMORROW
+  # ------------------------------------------------------------
+  - trigger:
+      - platform: time_pattern
+        minutes: "/15"
+      - platform: homeassistant
+        event: start
+    action:
+      - action: calendar.get_events
+        target:
+          entity_id: calendar.YOUR_PARTNER_CALENDAR
+        data:
+          start_date_time: "{{ (now() + timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0).isoformat() }}"
+          end_date_time: "{{ (now() + timedelta(days=1)).replace(hour=23, minute=59, second=59, microsecond=0).isoformat() }}"
+        response_variable: partner_tmrw
+    sensor:
+      - name: "TRMNL PERSON2 Tomorrow Events"
+        unique_id: trmnl_PERSON2_tomorrow_events
+        state: >-
+          {% set all = partner_tmrw['calendar.YOUR_PARTNER_CALENDAR'].events | default([]) %}
+          {{ all | length }} events
+        attributes:
+          events: >-
+            {% set all = partner_tmrw['calendar.YOUR_PARTNER_CALENDAR'].events | default([]) | sort(attribute='start') %}
+            {% set ns = namespace(lines=[]) %}
+            {% for e in all %}{% if 'T' in e.start %}{% set t1 = (e.start | as_datetime | as_local).strftime('%H:%M') %}{% set t2 = (e.end | as_datetime | as_local).strftime('%H:%M') %}{% else %}{% set t1 = 'allday' %}{% set t2 = 'allday' %}{% endif %}{% set ns.lines = ns.lines + [t1 + '|' + t2 + '|' + e.summary] %}{% endfor %}
+            {{ ns.lines | join('\n') }}
+
+
+# ==============================================================
+# AUTOMATION — Refresh display 30s after sensors update
+# ==============================================================
+automation:
+  - alias: "TRMNL - Refresh Display"
+    id: trmnl_refresh_display
+    mode: single
+    trigger:
+      - platform: time_pattern
+        minutes: "/15"
+      - platform: homeassistant
+        event: start
+    action:
+      - delay: "00:00:30"
+      - action: button.press
+        target:
+          entity_id: button.YOUR_DEVICE_NAME_refresh_display
