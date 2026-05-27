@@ -153,7 +153,7 @@ font:
     glyphs: " !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~\u00b0\u2019"
 
   # Calendar event text — 14px fits comfortably in 36px (1-hour) blocks
-  # font_event     : bpp:4 for Brad events (black text)
+  # font_event     : bpp:4 for PERSON1 events (black text)
   # font_event_inv : bpp:1 required for white text; bpp:4 inverts background pixels
   - file: "gfonts://Noto+Sans@700"
     id: font_event
@@ -258,14 +258,14 @@ text_sensor:
   # Calendar events — reads the 'events' attribute from each template sensor
   # Attribute contains newline-delimited "H:MM AM|Title" lines, no 255-char limit
   - platform: homeassistant
-    entity_id: sensor.trmnl_brad_today_events
+    entity_id: sensor.trmnl_PERSON1_today_events
     attribute: events
-    id: brad_today_events
+    id: PERSON1_today_events
     internal: true
   - platform: homeassistant
-    entity_id: sensor.trmnl_brad_tomorrow_events
+    entity_id: sensor.trmnl_PERSON1_tomorrow_events
     attribute: events
-    id: brad_tmrw_events
+    id: PERSON1_tmrw_events
     internal: true
   - platform: homeassistant
     entity_id: sensor.trmnl_family_today_events
@@ -283,7 +283,7 @@ text_sensor:
     id: partner_today_events
     internal: true
   - platform: homeassistant
-    entity_id: sensor.trmnl_kelly_tomorrow_events
+    entity_id: sensor.trmnl_PERSON2_tomorrow_events
     attribute: events
     id: partner_tmrw_events
     internal: true
@@ -484,13 +484,13 @@ display:
       // ══════════════════════════════════════════════════════════
       // RIGHT PANEL — RESPONSIVE 2x2 GRID
       //   Columns : TODAY (x=394..587)  |  TOMORROW (x=594..788)
-      //   Rows    : BRAD  (dynamic height, up to 10 events)
-      //             FAMILY (starts below Brad, up to 4 events)
+      //   Rows    : PERSON1  (dynamic height, up to 10 events)
+      //             FAMILY (starts below PERSON1, up to 4 events)
       //
       // Each calendar section is stored in a single input_text entity
       // as newline-delimited "H:MM AM|Event title" lines.
-      // Brad/Family horizontal divider position is calculated after
-      // drawing both Brad columns so it always sits below the tallest.
+      // PERSON1/Family horizontal divider position is calculated after
+      // drawing both PERSON1 columns so it always sits below the tallest.
       // ══════════════════════════════════════════════════════════
 
       // ── Parse a newline-delimited event string into a vector ─────
@@ -529,18 +529,18 @@ display:
       // Calendar time range is fixed 8 AM – 8 PM for both columns
 
       // ── Draw one time-blocked calendar column ─────────────────────────────
-      // Event types (typv):  0 = Brad   (outline, white fill, black text)
+      // Event types (typv):  0 = PERSON1   (outline, white fill, black text)
       //                      1 = Family  (black fill, white text)
-      //                      2 = Kelly   (double outline, white fill, black text)
+      //                      2 = PERSON2   (double outline, white fill, black text)
       // Changes vs previous:
-      //   • Kelly events with double-outline
+      //   • PERSON2 events with double-outline
       //   • 30-min minimum visual block height (15-min slots readable)
       //   • All events shown regardless of whether they are past
       //   • "No Scheduled Events Today" when N=0
       auto draw_cal_col = [&](int col_x, int col_end, bool is_today,
-          const std::vector<std::string>& brad_evs,
+          const std::vector<std::string>& PERSON1_evs,
           const std::vector<std::string>& fam_evs,
-          const std::vector<std::string>& kelly_evs) {
+          const std::vector<std::string>& PERSON2_evs) {
 
         const int LBL_W   = 26;
         const int EV_X    = col_x + LBL_W + 2;
@@ -594,9 +594,9 @@ display:
           }
         };
 
-        add_events(brad_evs,  0);
+        add_events(PERSON1_evs,  0);
         add_events(fam_evs,   1);
-        add_events(kelly_evs, 2);
+        add_events(PERSON2_evs, 2);
 
         int N = (int)m1v.size();
 
@@ -657,7 +657,7 @@ display:
 
           // ── Text layout ─────────────────────────────────────────────────
           const int PAD  = 3;
-          const int KPAD = 5;   // extra padding for Kelly's inner outline
+          const int KPAD = 5;   // extra padding for PERSON2's inner outline
           // ~7px/char at 14px Noto Bold (7 more accurate than 9 for typical text)
           int max_ch = std::max(3, (lw - PAD*2) / 7);
           std::string l1 = tiv[si], l2 = "";
@@ -697,7 +697,7 @@ display:
               }
             }
           } else if (type == 2) {
-            // ── Kelly: white fill, double outline, black text ────────────
+            // ── PERSON2: white fill, double outline, black text ────────────
             it.filled_rectangle(lx+1, y1, lw-2, bh, WHITE_CLR);   // white fill
             it.rectangle(lx, y1, lw, bh);                           // outer outline
             if (lw > 4 && bh > 4)
@@ -712,7 +712,7 @@ display:
               }
             }
           } else {
-            // ── Brad: white fill, single outline, black text ─────────────
+            // ── PERSON1: white fill, single outline, black text ─────────────
             it.filled_rectangle(lx+1, y1, lw-2, bh, WHITE_CLR);
             it.rectangle(lx, y1, lw, bh);
             if (bh >= 14) {
@@ -730,8 +730,8 @@ display:
       };
 
       // ── Parse all six calendar strings ────────────────────────────────────
-      auto b_today    = parse_ev(id(brad_today_events).state);
-      auto b_tmrw     = parse_ev(id(brad_tmrw_events).state);
+      auto b_today    = parse_ev(id(PERSON1_today_events).state);
+      auto b_tmrw     = parse_ev(id(PERSON1_tmrw_events).state);
       auto f_today    = parse_ev(id(family_today_events).state);
       auto f_tmrw     = parse_ev(id(family_tmrw_events).state);
       auto k_today    = parse_ev(id(partner_today_events).state);
