@@ -153,7 +153,7 @@ font:
     glyphs: " !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~\u00b0\u2019"
 
   # Calendar event text — 14px fits comfortably in 36px (1-hour) blocks
-  # font_event     : bpp:4 for Brad events (black text)
+  # font_event     : bpp:4 for PERSON1 events (black text)
   # font_event_inv : bpp:1 required for white text; bpp:4 inverts background pixels
   - file: "gfonts://Noto+Sans@700"
     id: font_event
@@ -266,14 +266,14 @@ text_sensor:
   # Calendar events — reads the 'events' attribute from each template sensor
   # Attribute contains newline-delimited "H:MM AM|Title" lines, no 255-char limit
   - platform: homeassistant
-    entity_id: sensor.trmnl_brad_today_events
+    entity_id: sensor.trmnl_PERSON1_today_events
     attribute: events
-    id: brad_today_events
+    id: PERSON1_today_events
     internal: true
   - platform: homeassistant
-    entity_id: sensor.trmnl_brad_tomorrow_events
+    entity_id: sensor.trmnl_PERSON1_tomorrow_events
     attribute: events
-    id: brad_tmrw_events
+    id: PERSON1_tmrw_events
     internal: true
   - platform: homeassistant
     entity_id: sensor.trmnl_family_today_events
@@ -291,7 +291,7 @@ text_sensor:
     id: partner_today_events
     internal: true
   - platform: homeassistant
-    entity_id: sensor.trmnl_kelly_tomorrow_events
+    entity_id: sensor.trmnl_PERSON2_tomorrow_events
     attribute: events
     id: partner_tmrw_events
     internal: true
@@ -542,13 +542,13 @@ display:
       // ══════════════════════════════════════════════════════════
       // RIGHT PANEL — RESPONSIVE 2x2 GRID
       //   Columns : TODAY (x=394..587)  |  TOMORROW (x=594..788)
-      //   Rows    : BRAD  (dynamic height, up to 10 events)
-      //             FAMILY (starts below Brad, up to 4 events)
+      //   Rows    : PERSON1  (dynamic height, up to 10 events)
+      //             FAMILY (starts below PERSON1, up to 4 events)
       //
       // Each calendar section is stored in a single input_text entity
       // as newline-delimited "H:MM AM|Event title" lines.
-      // Brad/Family horizontal divider position is calculated after
-      // drawing both Brad columns so it always sits below the tallest.
+      // PERSON1/Family horizontal divider position is calculated after
+      // drawing both PERSON1 columns so it always sits below the tallest.
       // ══════════════════════════════════════════════════════════
 
       // ── Parse a newline-delimited event string into a vector ─────
@@ -576,7 +576,7 @@ display:
 
       // ── Box-list calendar — aligned 3-section layout ─────────────────────
       // Section heights are calculated from the MAX of both columns so that
-      // BRAD / KELLY / FAMILY headers always appear at the same y position in
+      // PERSON1 / PERSON2 / FAMILY headers always appear at the same y position in
       // TODAY and TOMORROW.  Dividers span the full right-panel width (394→788).
       //
       // Fonts: font_small (18px Noto Bold) for section labels
@@ -584,8 +584,8 @@ display:
       //
       // Per-event slot: 16px time + 2px + 16px title + 4px gap = 38px
       // Section label:  18px + 6px gap = 24px
-      // Brad rows:  dynamically allocated — gets all remaining space
-      // Kelly rows: capped at 2
+      // PERSON1 rows:  dynamically allocated — gets all remaining space
+      // PERSON2 rows: capped at 2
       // Family rows: capped at 3
 
       // Layout constants
@@ -614,41 +614,41 @@ display:
       };
 
       // Parse all six calendar strings
-      auto b_today = parse_ev(id(brad_today_events).state);
-      auto b_tmrw  = parse_ev(id(brad_tmrw_events).state);
+      auto b_today = parse_ev(id(PERSON1_today_events).state);
+      auto b_tmrw  = parse_ev(id(PERSON1_tmrw_events).state);
       auto f_today = parse_ev(id(family_today_events).state);
       auto f_tmrw  = parse_ev(id(family_tmrw_events).state);
       auto k_today = parse_ev(id(partner_today_events).state);
       auto k_tmrw  = parse_ev(id(partner_tmrw_events).state);
 
       // ── Calculate shared layout from max of both columns ─────────────────
-      // Kelly rows: max events across today/tomorrow, capped at 2
-      int kelly_rows = (int)std::min(
+      // PERSON2 rows: max events across today/tomorrow, capped at 2
+      int PERSON2_rows = (int)std::min(
           (int)std::max(k_today.size(), k_tmrw.size()), 2);
       // Family rows: max events across today/tomorrow, capped at 3
       int fam_rows = (int)std::min(
           (int)std::max(f_today.size(), f_tmrw.size()), 3);
 
       // Section content heights (actual events or "No events today" message)
-      int kelly_content_h = kelly_rows > 0 ? kelly_rows * EV_H : MSG_H;
+      int PERSON2_content_h = PERSON2_rows > 0 ? PERSON2_rows * EV_H : MSG_H;
       int fam_content_h   = fam_rows   > 0 ? fam_rows   * EV_H : MSG_H;
-      int kelly_section_h = LBL_H + kelly_content_h;
+      int PERSON2_section_h = LBL_H + PERSON2_content_h;
       int fam_section_h   = LBL_H + fam_content_h;
 
-      // Brad: gets remaining space after Kelly and Family
-      int brad_pool   = (BL_Y1 - BL_Y0) - LBL_H - kelly_section_h
+      // PERSON1: gets remaining space after PERSON2 and Family
+      int PERSON1_pool   = (BL_Y1 - BL_Y0) - LBL_H - PERSON2_section_h
                         - fam_section_h - 2 * DIV_H;
-      int max_brad    = std::max(1, brad_pool / EV_H);
-      bool brad_any   = !b_today.empty() || !b_tmrw.empty();
-      int brad_ev_max = (int)std::max(b_today.size(), b_tmrw.size());
-      int brad_rows   = brad_any ? std::min(brad_ev_max, max_brad) : 0;
-      int brad_content_h = brad_rows > 0 ? brad_rows * EV_H : MSG_H;
+      int max_PERSON1    = std::max(1, PERSON1_pool / EV_H);
+      bool PERSON1_any   = !b_today.empty() || !b_tmrw.empty();
+      int PERSON1_ev_max = (int)std::max(b_today.size(), b_tmrw.size());
+      int PERSON1_rows   = PERSON1_any ? std::min(PERSON1_ev_max, max_PERSON1) : 0;
+      int PERSON1_content_h = PERSON1_rows > 0 ? PERSON1_rows * EV_H : MSG_H;
 
       // Fixed y positions — identical for both TODAY and TOMORROW columns
-      const int Y_BRAD  = BL_Y0;
-      const int Y_DIV1  = Y_BRAD + LBL_H + brad_content_h + 4;
-      const int Y_KELLY = Y_DIV1 + 4;
-      const int Y_DIV2  = Y_KELLY + kelly_section_h + 4;
+      const int Y_PERSON1  = BL_Y0;
+      const int Y_DIV1  = Y_PERSON1 + LBL_H + PERSON1_content_h + 4;
+      const int Y_PERSON2 = Y_DIV1 + 4;
+      const int Y_DIV2  = Y_PERSON2 + PERSON2_section_h + 4;
       const int Y_FAM   = Y_DIV2 + 4;
 
       // ── Column headers ─────────────────────────────────────────────────────
@@ -663,8 +663,8 @@ display:
 
       // ── Draw one column ───────────────────────────────────────────────────
       auto draw_box_col = [&](int col_x, int col_end,
-          const std::vector<std::string>& brad_evs,
-          const std::vector<std::string>& kelly_evs,
+          const std::vector<std::string>& PERSON1_evs,
+          const std::vector<std::string>& PERSON2_evs,
           const std::vector<std::string>& fam_evs) {
 
         const int X0  = col_x + 4;
@@ -673,16 +673,16 @@ display:
         // ~9px per char at 16px Noto Bold
         int max_ch = std::max(4, XW / 9);
 
-        // ── BRAD ─────────────────────────────────────────────────────────
-        it.print(X0, Y_BRAD, id(font_small), "BRAD");
+        // ── PERSON1 ─────────────────────────────────────────────────────────
+        it.print(X0, Y_PERSON1, id(font_small), "PERSON1");
         {
-          int ey = Y_BRAD + LBL_H;
-          if (brad_evs.empty()) {
+          int ey = Y_PERSON1 + LBL_H;
+          if (PERSON1_evs.empty()) {
             it.print(X0, ey, id(font_event_lg), "No events today");
           } else {
             int shown = 0;
-            for (const auto& ev : brad_evs) {
-              if (shown >= brad_rows || ey + EV_H > Y_DIV1 - 2) break;
+            for (const auto& ev : PERSON1_evs) {
+              if (shown >= PERSON1_rows || ey + EV_H > Y_DIV1 - 2) break;
               std::string t1 = fmt_time(fld(ev, 0));
               std::string ti = fld(ev, 2);
               if ((int)ti.size() > max_ch) ti = ti.substr(0, max_ch-2) + "..";
@@ -691,7 +691,7 @@ display:
               ey += EV_H;
               shown++;
             }
-            int total = (int)brad_evs.size();
+            int total = (int)PERSON1_evs.size();
             if (shown < total && ey + LH <= Y_DIV1 - 2) {
               char more[14];
               snprintf(more, sizeof(more), "+%d more", total - shown);
@@ -700,16 +700,16 @@ display:
           }
         }
 
-        // ── KELLY ────────────────────────────────────────────────────────
-        it.print(X0, Y_KELLY, id(font_small), "KELLY");
+        // ── PERSON2 ────────────────────────────────────────────────────────
+        it.print(X0, Y_PERSON2, id(font_small), "PERSON2");
         {
-          int ey = Y_KELLY + LBL_H;
-          if (kelly_evs.empty()) {
+          int ey = Y_PERSON2 + LBL_H;
+          if (PERSON2_evs.empty()) {
             it.print(X0, ey, id(font_event_lg), "No events today");
           } else {
             int shown = 0;
-            for (const auto& ev : kelly_evs) {
-              if (shown >= kelly_rows || ey + EV_H > Y_DIV2 - 2) break;
+            for (const auto& ev : PERSON2_evs) {
+              if (shown >= PERSON2_rows || ey + EV_H > Y_DIV2 - 2) break;
               std::string t1 = fmt_time(fld(ev, 0));
               std::string ti = fld(ev, 2);
               if ((int)ti.size() > max_ch) ti = ti.substr(0, max_ch-2) + "..";
